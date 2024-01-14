@@ -21,7 +21,7 @@ initEverything();
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 10000) : sendNewTask();
+process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 60000) : sendNewTask();
 
 function initEverything() {
   initBot();
@@ -114,7 +114,7 @@ function checkTimeAndRunFunction() {
   const currentTime = new Date(astanaTime);
 
   // Проверяем, соответствует ли время 14:00
-  if (currentTime.getHours() === 16 && currentTime.getMinutes() === 50) {
+  if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
     sendNewTask();
   }
 }
