@@ -43,10 +43,10 @@ function initBot() {
   bot.start(onStart);
 
   bot.on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'));
-  bot.hears('Текущая задача', getCurrentTask);
-  bot.hears('/currentTask', getCurrentTask);
-  bot.hears('Отключи меня', removeUser);
-  bot.hears('/turnOff', removeUser);
+  bot.hears('Текущая задача', (ctx) => getCurrentTask(ctx));
+  bot.hears('/currentTask', (ctx) => getCurrentTask(ctx));
+  bot.hears('Отключи меня', (ctx) => removeUser(ctx));
+  bot.hears('/turnOff', (ctx) => removeUser(ctx));
 
   bot.launch();
 }
@@ -97,6 +97,7 @@ function checkTimeAndRunFunction() {
 }
 
 function getCurrentTask(ctx) {
+  console.log('123')
   const messageObj = MessagesMap.find(
     (el) => el.title === currentTask.finalTitle
   );
