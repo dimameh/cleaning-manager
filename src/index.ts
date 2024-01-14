@@ -17,18 +17,17 @@ const chatIdManager = new ChatIdManager();
 
 initEverything();
 
-setInterval(checkTimeAndRunFunction, 60000);
-
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 60000) : sendNewTask();
 
 function initEverything() {
   initBot();
   try {
     taskScheduler = new TaskScheduler();
   } catch (err) {
-    console.error(err);
     console.log('Создаем новый Scheduler');
     taskScheduler = new TaskScheduler(shuffle(TodoListInitial));
   }

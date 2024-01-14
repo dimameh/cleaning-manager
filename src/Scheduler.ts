@@ -18,8 +18,11 @@ export class TaskScheduler {
       try {
         this.loadCurrentState();
       } catch (error) {
+        const errorMessage = 'Не удалось загрузить Scheduler. Проверьте, что файл SchedulerState.json существует и содержит корректные данные.';
+      
+        console.error(errorMessage);
         throw new Error(
-          'Не удалось загрузить Scheduler. Проверьте, что файл SchedulerState.json существует и содержит корректные данные.'
+          errorMessage
         );
       }
       return;
