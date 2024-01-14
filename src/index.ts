@@ -21,7 +21,7 @@ initEverything();
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 60000) : sendNewTask();
+process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 1000) : sendNewTask();
 
 function initEverything() {
   initBot();
@@ -42,7 +42,7 @@ function initBot() {
   bot = new Telegraf(process.env.BOT_TOKEN);
   bot.start((ctx) => {
     ctx.reply(
-      'Привет! Я твой клининг менеджер. Я подкажу тебе когда и что убрать в твоей квартире.'
+      'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире.'
     );
     chatIdManager.addChat(ctx.chat.id);
   });
@@ -114,7 +114,7 @@ function checkTimeAndRunFunction() {
   const currentTime = new Date(astanaTime);
 
   // Проверяем, соответствует ли время 14:00
-  if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
+  // if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
     sendNewTask();
-  }
+  // }
 }
