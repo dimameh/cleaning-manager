@@ -40,37 +40,13 @@ function initBot() {
     process.exit(1);
   }
   bot = new Telegraf(process.env.BOT_TOKEN);
-  bot.start((ctx) => {
-    ctx.reply(
-      'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире.'
-    );
-    chatIdManager.addChat(ctx.chat.id);
-  });
+  bot.start(onStart);
 
   bot.on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'));
-
-  bot.hears('Текущая задача', (ctx) => {
-    const messageObj = MessagesMap.find(
-      (el) => el.title === currentTask.finalTitle
-    );
-    if (!messageObj) {
-      console.error('Не найден текст для задачи. Fak.', {
-        finalTitle: currentTask.finalTitle,
-        title: currentTask.title,
-        messageObj,
-      });
-      ctx.reply('Не могу найти текст для задачи. Fak.')
-      return;
-    }
-    ctx.reply(messageObj.descriptions)
-  });
-
-  bot.hears('Отключи меня', (ctx) => {
-    chatIdManager.removeChat(ctx.chat.id);
-    ctx.reply(
-      'Окей, грязная вонючка, я больше не буду тебе писать. Если передумаешь вонять, напиши /start'
-    );
-  });
+  bot.hears('Текущая задача', getCurrentTask);
+  bot.hears('/currentTask', getCurrentTask);
+  bot.hears('Отключи меня', removeUser);
+  bot.hears('/turnOff', removeUser);
 
   bot.launch();
 }
@@ -91,9 +67,10 @@ function sendNewTask() {
     return;
   }
 
-  console.log({ messageObj });
+  console.log('Отправляем новую задачу', { messageObj });
 
-  const { title, descriptions } = messageObj;
+  const { descriptions } = messageObj;
+
 
   chatIdManager.getChats().forEach((chatId) => {
     bot.telegram.sendMessage(
@@ -117,4 +94,34 @@ function checkTimeAndRunFunction() {
   if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
     sendNewTask();
   }
+}
+
+function getCurrentTask(ctx) {
+  const messageObj = MessagesMap.find(
+    (el) => el.title === currentTask.finalTitle
+  );
+  if (!messageObj) {
+    console.error('Не найден текст для задачи. Fak.', {
+      finalTitle: currentTask.finalTitle,
+      title: currentTask.title,
+      messageObj,
+    });
+    ctx.reply('Не могу найти текст для задачи. Fak.')
+    return;
+  }
+  ctx.reply(messageObj.descriptions)
+}
+
+function removeUser(ctx) {
+  chatIdManager.removeChat(ctx.chat.id);
+  ctx.reply(
+    'Окей, грязная вонючка, я больше не буду тебе писать. Если передумаешь вонять, напиши /start'
+  );
+}
+
+function onStart(ctx) {
+  ctx.reply(
+    'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире.'
+  );
+  chatIdManager.addChat(ctx.chat.id);
 }
