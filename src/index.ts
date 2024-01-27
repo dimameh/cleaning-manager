@@ -1,11 +1,11 @@
-import { TaskScheduler } from './Scheduler';
+import { TaskScheduler } from './entities/Scheduler';
 import TodoListInitial from './config/TodoList.json';
 import MessagesMap from './config/MessagesMap.json';
 import { shuffle } from './utils';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { Task } from './Task';
-import { ChatIdManager } from './ChatIdsManager';
+import { Task } from './entities/Task';
+import { ChatIdManager } from './entities/ChatIdsManager';
 import { config } from 'dotenv';
 
 config();

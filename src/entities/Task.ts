@@ -1,5 +1,5 @@
 import { TaskVariationSelector } from './TaskVariationSelector';
-import { TaskSerialized } from './types';
+import { TaskSerialized } from '../types';
 
 export class Task {
   title: string;

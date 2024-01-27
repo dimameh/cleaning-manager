@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { Task } from './Task';
-import { SchedulerSerialized } from './types';
+import { SchedulerSerialized } from '../types';
 import path from 'path';
 
 export class TaskScheduler {
