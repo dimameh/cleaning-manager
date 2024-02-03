@@ -8,6 +8,10 @@ const TaskListSchema = new Schema<ITaskList>({
   title: { type: String, required: true }
 });
 
-const TaskList = mongoose.model<ITaskList>('TaskList', TaskListSchema, 'TaskList');
+const TaskList = mongoose.model<ITaskList>(
+  'TaskList',
+  TaskListSchema,
+  'TaskList'
+);
 
 export default TaskList;

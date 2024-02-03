@@ -23,15 +23,15 @@ process.env.USE_CRON === 'FALSE'
   ? setInterval(checkTimeAndRunFunction, 60000)
   : sendNewTask();
 
-setInterval(sendNewTask, 10000);
-
 async function initEverything() {
   await initBot();
   console.log('bot is ready');
   await initDB();
   console.log('DB is ready');
   const taskList = await TaskList.findOne({});
-  taskScheduler = new TaskScheduler(taskList?.id);
+  taskScheduler = new TaskScheduler();
+  await taskScheduler.init(taskList?.id);
+  console.log('Task Scheduler is ready');
 }
 
 async function initBot() {
@@ -55,7 +55,7 @@ async function initBot() {
 }
 
 async function sendNewTask() {
-  currentTask = await taskScheduler.chooseTask();
+  currentTask = await taskScheduler.generateTask();
   console.log('Sending new task', { currentTask });
 
   (await Chat.find()).forEach((chat) => {
@@ -79,9 +79,7 @@ function checkTimeAndRunFunction() {
 async function getCurrentTask(ctx) {
   const chat = await Chat.findOne({ chatId: ctx.chat.id });
   if (!chat) {
-    ctx.reply(
-      'Куда! Нажмешь /start - и получишь задание!'
-    );
+    ctx.reply('Куда! Нажмешь /start - и получишь задание!');
     return;
   }
 
@@ -93,7 +91,9 @@ async function getCurrentTask(ctx) {
   }
 
   if (!currentTask) {
-    ctx.reply('Пока что нет задачи. Но скоро будет! А пока выметайся от сюда 🧹');
+    ctx.reply(
+      'Пока что нет задачи. Но скоро будет! А пока выметайся от сюда 🧹'
+    );
     return;
   }
   ctx.reply(currentTask.message);

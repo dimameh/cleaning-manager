@@ -1,36 +1,41 @@
 import TaskList, { ITaskList } from './DB/entities/TaskList';
 import Task, { ITask } from './DB/entities/Task';
 import SchedulerHistory from './DB/entities/SchedulerHistory';
-import { LastTasksIds } from './utils/types';
-import { shuffle } from './utils';
 
 export class TaskScheduler {
   private _tasks: ITask[];
-  private _lastTasksIds: Readonly<LastTasksIds>;
+  private _readyForNextTask = true;
 
-  constructor(taskListId: ITaskList['id']) {
+  constructor() {}
+
+  async init(taskListId: ITaskList['id']) {
     try {
-      this._loadTasks(taskListId);
+      await this._loadTasks(taskListId);
     } catch (error) {
       const errorMessage = 'Не удалось загрузить список задач.';
       console.error(errorMessage, error);
     }
   }
 
-  async chooseTask(): Promise<ITask> {
+  async generateTask(): Promise<ITask> {
+    // prevent parallel documents saving (weights for tasks)
+    if (!this._readyForNextTask) {
+      throw new Error('TaskScheduler is not ready for next task.');
+    }
+    this._readyForNextTask = false;
     const task = await this._getNextTask();
-    task.completeTask();
+    await task.completeTask();
     await SchedulerHistory.updateLastTasks(task?.id);
+    this._readyForNextTask = true;
     return task;
   }
 
   private async _getNextTask(): Promise<ITask> {
     await this._updateWeights();
-
-    const lastTaskIdsString = this._lastTasksIds.map((el) => el?.id);
+    const lastTasksIds = await SchedulerHistory.getLastTasks();
     // Фильтрация задач, чтобы не повторять задачу подряд
     const filteredTasks = this._tasks.filter(
-      (task) => !lastTaskIdsString.includes(task.id)
+      (task) => !lastTasksIds.includes(task._id)
     );
     // Проверка на задачи, которые не выполнялись более двух недель
     const overdueTask = filteredTasks.find((task) => task.weight > 14);
@@ -52,15 +57,23 @@ export class TaskScheduler {
       }
     }
 
-    // Возвращаем первую задачу из отфильтрованного списка, если другие условия не выполняются
-    const firstTask = shuffle(filteredTasks)[0];
-    return firstTask;
+    const maxWeight = filteredTasks.reduce(
+      (max, task) => Math.max(max, task.weight),
+      -Infinity
+    );
+
+    // Фильтруем задачи, у которых вес равен максимальному
+    const maxWeightTasks = filteredTasks.filter(
+      (task) => task.weight === maxWeight
+    );
+    return maxWeightTasks[0];
   }
 
   private async _updateWeights() {
     const promises = this._tasks.map((task) =>
       task.updateWeight((lastCompleted) => {
         const now = new Date();
+        // Количество дней с момента последнего выполнения задачи будет ее новым весом
         const daysSinceCompletion = Math.floor(
           (now.getTime() - lastCompleted.getTime()) / (1000 * 3600 * 24)
         );
@@ -72,8 +85,6 @@ export class TaskScheduler {
   }
 
   private async _loadTasks(taskListId: ITaskList['id']) {
-    this._lastTasksIds = SchedulerHistory.lastTaskIds;
-
     const taskListResult = await TaskList.findById(taskListId);
     if (!taskListResult) {
       throw new Error('Task list not found');

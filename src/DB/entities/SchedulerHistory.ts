@@ -1,5 +1,6 @@
-import mongoose, { Schema, Types, Document } from 'mongoose';
-import { LastTasksIds } from 'src/utils/types';
+import mongoose, { Schema, Types, Document, Model } from 'mongoose';
+import { wait } from '../../utils';
+import { LastTasksIds } from '../../utils/types';
 
 const ObjectId = Schema.ObjectId;
 
@@ -7,61 +8,46 @@ export interface ISchedulerHistory extends Document {
   lastTaskIds: LastTasksIds;
 }
 
+interface ISchedulerHistoryModel extends Model<ISchedulerHistory> {
+  updateLastTasks(newTaskId: Types.ObjectId): Promise<void>;
+  getLastTasks(): Promise<LastTasksIds>;
+}
+
 const SchedulerHistorySchema = new Schema<ISchedulerHistory>({
   lastTaskIds: { type: [ObjectId], required: true, ref: 'Task' }
 });
 
-const SchedulerHistoryModel = mongoose.model<ISchedulerHistory>(
-  'SchedulerHistory',
-  SchedulerHistorySchema,
-  'SchedulerHistory'
-);
+SchedulerHistorySchema.statics.updateLastTasks = async function (
+  newTaskId: Types.ObjectId
+) {
+  const schedulerHistory = await this.findOneAndUpdate(
+    {},
+    {
+      // Добавление нового ID в начало массива
+      $push: { lastTaskIds: { $each: [newTaskId], $position: 0 } }
+    },
+    { upsert: true, new: true }
+  );
 
-class SchedulerHistoryProxy {
-  private _lastTaskIds: LastTasksIds;
-  constructor() {
-    SchedulerHistoryModel.findOne().then((res) => {
-      if (!res) {
-        SchedulerHistoryModel.create({
-          lastTaskIds: []
-        });
-        this._lastTaskIds = [];
-      } else {
-        this._lastTaskIds = res.lastTaskIds;
-      }
-    });
-  }
-
-  public async updateLastTasks(
-    newTaskId: Types.ObjectId
-  ): Promise<Readonly<LastTasksIds>> {
-    const schedulerHistory = await SchedulerHistoryModel.findOneAndUpdate(
+  // Если в массиве более 5 задач, удаляем самую старую (последнюю в массиве)
+  if (schedulerHistory.lastTaskIds.length > 5) {
+    await this.updateOne(
       {},
       {
-        // Добавление нового ID в начало массива
-        $push: { lastTaskIds: { $each: [newTaskId], $position: 0 } }
-      },
-      { upsert: true, new: true }
+        $pop: { lastTaskIds: 1 }
+      }
     );
-
-    // Если в массиве более 5 задач, удаляем самую старую (последнюю в массиве)
-    if (schedulerHistory.lastTaskIds.length > 5) {
-      await SchedulerHistoryModel.updateOne(
-        {},
-        {
-          $pop: { lastTaskIds: 1 }
-        }
-      );
-    }
-    this._lastTaskIds = schedulerHistory.lastTaskIds;
-    return this._lastTaskIds;
   }
+};
 
-  get lastTaskIds(): Readonly<LastTasksIds> {
-    return this._lastTaskIds;
-  }
-}
+SchedulerHistorySchema.statics.getLastTasks = async function () {
+  const record = await this.findOne({});
+  return record?.lastTaskIds || [];
+};
 
-const SchedulerHistory = new SchedulerHistoryProxy();
+const SchedulerHistory = mongoose.model<
+  ISchedulerHistory,
+  ISchedulerHistoryModel
+>('SchedulerHistory', SchedulerHistorySchema, 'SchedulerHistory');
 
 export default SchedulerHistory;

@@ -18,6 +18,10 @@ const UserInfoSchema = new Schema<IUserInfo>({
   language_code: { type: String, required: false }
 });
 
-const UserInfo = mongoose.model<IUserInfo>('UserInfo', UserInfoSchema, 'UserInfo');
+const UserInfo = mongoose.model<IUserInfo>(
+  'UserInfo',
+  UserInfoSchema,
+  'UserInfo'
+);
 
 export default UserInfo;
