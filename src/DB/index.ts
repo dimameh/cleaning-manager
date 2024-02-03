@@ -4,11 +4,13 @@ Mongoose.Promise = global.Promise;
 
 export async function initDB() {
   try {
-    await Mongoose.connect(process.env.DB_URI || '');
-    console.log('Connected to MongoDB');
-    console.log('Successfully connected to MongoDB!');
+    if (!process.env.DB_URI) {
+      throw new Error('DB_URI is not defined!');
+    }
+    await Mongoose.connect(process.env.DB_URI);
+    console.log('Connected to DB');
   } catch (error) {
-    console.error('Connection to MongoDB failed!', error);
+    console.error('Connection to DB failed!', error);
     process.exit();
   }
 }
