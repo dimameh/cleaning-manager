@@ -1,9 +1,10 @@
 import mongoose, { Schema, Types, Document } from 'mongoose';
+import { LastTasksIds } from 'src/utils/types';
 
 const ObjectId = Schema.ObjectId;
 
 export interface ISchedulerHistory extends Document {
-  lastTaskIds: Types.ObjectId[];
+  lastTaskIds: LastTasksIds;
 }
 
 const SchedulerHistorySchema = new Schema<ISchedulerHistory>({
@@ -16,7 +17,7 @@ const SchedulerHistoryModel = mongoose.model<ISchedulerHistory>(
 );
 
 class SchedulerHistoryProxy {
-  private _lastTaskIds: Types.ObjectId[];
+  private _lastTaskIds: LastTasksIds;
   constructor() {
     SchedulerHistoryModel.findOne().then((res) => {
       if (!res) {
@@ -32,7 +33,7 @@ class SchedulerHistoryProxy {
 
   public async updateLastTasks(
     newTaskId: Types.ObjectId
-  ): Promise<ReadonlyArray<Types.ObjectId>> {
+  ): Promise<Readonly<LastTasksIds>> {
     const schedulerHistory = await SchedulerHistoryModel.findOneAndUpdate(
       {},
       {
@@ -55,7 +56,7 @@ class SchedulerHistoryProxy {
     return this._lastTaskIds;
   }
 
-  get lastTaskIds(): ReadonlyArray<Types.ObjectId> {
+  get lastTaskIds(): Readonly<LastTasksIds> {
     return this._lastTaskIds;
   }
 }

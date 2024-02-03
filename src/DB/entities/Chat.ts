@@ -7,7 +7,7 @@ export interface IChat extends Document {
   taskListId: Types.ObjectId;
 }
 
-export const ChatSchema = new Schema<IChat>({
+const ChatSchema = new Schema<IChat>({
   chatId: { type: Number, required: true, unique: true },
   userInfoId: { type: ObjectId, ref: 'UserInfo' },
   taskListId: { type: ObjectId, ref: 'TaskList' },

@@ -15,4 +15,3 @@ export function shuffle<T>(array: Array<T>) {
 
   return array;
 }
-

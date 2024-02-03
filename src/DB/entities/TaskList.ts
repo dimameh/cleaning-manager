@@ -4,7 +4,7 @@ export interface ITaskList extends Document {
   title: string;
 }
 
-export const TaskListSchema = new Schema<ITaskList>({
+const TaskListSchema = new Schema<ITaskList>({
   title: { type: String, required: true }
 });
 

@@ -4,15 +4,17 @@ import MessagesMap from './config/MessagesMap.json';
 import { shuffle } from './utils';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { Task } from './entities/Task';
 import { ChatIdManager } from './entities/ChatIdsManager';
 import { config } from 'dotenv';
+import { initDB } from './DB';
+import TaskList from './DB/entities/TaskList';
+import { ITask } from './DB/entities/Task';
 
 config();
 
 let bot: Telegraf;
 let taskScheduler: TaskScheduler;
-let currentTask: Task;
+let currentTask: ITask;
 const chatIdManager = new ChatIdManager();
 
 initEverything();
@@ -21,17 +23,15 @@ initEverything();
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 60000) : sendNewTask();
+process.env.USE_CRON === 'FALSE'
+  ? setInterval(checkTimeAndRunFunction, 60000)
+  : sendNewTask();
 
-function initEverything() {
+async function initEverything() {
   initBot();
-  try {
-    taskScheduler = new TaskScheduler();
-  } catch (err) {
-    console.log('Создаем новый Scheduler');
-    taskScheduler = new TaskScheduler(shuffle(TodoListInitial));
-  }
-  sendNewTask();
+  await initDB();
+  const taskList = await TaskList.findOne({});
+  taskScheduler = new TaskScheduler(taskList?.id);
 }
 
 function initBot() {
@@ -61,7 +61,7 @@ function sendNewTask() {
     console.error('Не найден текст для задачи. Fak.', {
       finalTitle: currentTask.finalTitle,
       title: currentTask.title,
-      messageObj,
+      messageObj
     });
     taskScheduler.completeTask(currentTask.title);
     return;
@@ -70,7 +70,6 @@ function sendNewTask() {
   console.log('Отправляем новую задачу', { messageObj });
 
   const { descriptions } = messageObj;
-
 
   chatIdManager.getChats().forEach((chatId) => {
     bot.telegram.sendMessage(
@@ -86,7 +85,7 @@ function sendNewTask() {
 function checkTimeAndRunFunction() {
   // Получаем текущее время в Астане
   const astanaTime = new Date().toLocaleString('en-US', {
-    timeZone: 'Asia/Almaty',
+    timeZone: 'Asia/Almaty'
   });
   const currentTime = new Date(astanaTime);
 
@@ -97,7 +96,7 @@ function checkTimeAndRunFunction() {
 }
 
 function getCurrentTask(ctx) {
-  console.log('123')
+  console.log('123');
   const messageObj = MessagesMap.find(
     (el) => el.title === currentTask.finalTitle
   );
@@ -105,12 +104,12 @@ function getCurrentTask(ctx) {
     console.error('Не найден текст для задачи. Fak.', {
       finalTitle: currentTask.finalTitle,
       title: currentTask.title,
-      messageObj,
+      messageObj
     });
-    ctx.reply('Не могу найти текст для задачи. Fak.')
+    ctx.reply('Не могу найти текст для задачи. Fak.');
     return;
   }
-  ctx.reply(messageObj.descriptions)
+  ctx.reply(messageObj.descriptions);
 }
 
 function removeUser(ctx) {
