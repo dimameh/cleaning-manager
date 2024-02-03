@@ -23,6 +23,8 @@ process.env.USE_CRON === 'FALSE'
   ? setInterval(checkTimeAndRunFunction, 60000)
   : sendNewTask();
 
+setInterval(sendNewTask, 10000);
+
 async function initEverything() {
   await initBot();
   console.log('bot is ready');
@@ -74,7 +76,22 @@ function checkTimeAndRunFunction() {
   }
 }
 
-function getCurrentTask(ctx) {
+async function getCurrentTask(ctx) {
+  const chat = await Chat.findOne({ chatId: ctx.chat.id });
+  if (!chat) {
+    ctx.reply(
+      'Куда! Нажмешь /start - и получишь задание!'
+    );
+    return;
+  }
+
+  if (chat.isActive === false) {
+    ctx.reply(
+      'Соре, задания тут вонючкам не выдают. Хочешь перестать вонять? Нажми /start а там уже посмотрим.'
+    );
+    return;
+  }
+
   if (!currentTask) {
     ctx.reply('Пока что нет задачи. Но скоро будет! А пока выметайся от сюда 🧹');
     return;
