@@ -5,6 +5,7 @@ import TaskList, { ITaskList } from 'src/DB/entities/TaskList';
 import Task, { ITask } from 'src/DB/entities/Task';
 import SchedulerHistory from 'src/DB/entities/SchedulerHistory';
 import { LastTasksIds } from 'src/utils/types';
+import { shuffle } from './utils';
 
 export class TaskScheduler {
   private _tasks: ITask[];
@@ -55,7 +56,7 @@ export class TaskScheduler {
     }
 
     // Возвращаем первую задачу из отфильтрованного списка, если другие условия не выполняются
-    const firstTask = filteredTasks[0];
+    const firstTask = shuffle(filteredTasks)[0];
     return firstTask;
   }
 

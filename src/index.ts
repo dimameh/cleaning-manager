@@ -1,21 +1,19 @@
-import { TaskScheduler } from './entities/Scheduler';
+import { TaskScheduler } from './Scheduler';
 import TodoListInitial from './config/TodoList.json';
 import MessagesMap from './config/MessagesMap.json';
-import { shuffle } from './utils';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { ChatIdManager } from './entities/ChatIdsManager';
 import { config } from 'dotenv';
 import { initDB } from './DB';
 import TaskList from './DB/entities/TaskList';
 import { ITask } from './DB/entities/Task';
+import Chat from './DB/entities/Chat';
 
 config();
 
 let bot: Telegraf;
 let taskScheduler: TaskScheduler;
 let currentTask: ITask;
-const chatIdManager = new ChatIdManager();
 
 initEverything();
 
@@ -28,58 +26,38 @@ process.env.USE_CRON === 'FALSE'
   : sendNewTask();
 
 async function initEverything() {
-  initBot();
+  await initBot();
   await initDB();
   const taskList = await TaskList.findOne({});
   taskScheduler = new TaskScheduler(taskList?.id);
 }
 
-function initBot() {
+async function initBot() {
   if (!process.env.BOT_TOKEN) {
     console.error('BOT_TOKEN is not defined!');
     process.exit(1);
   }
   bot = new Telegraf(process.env.BOT_TOKEN);
-  bot.start(onStart);
-
-  bot.on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'));
-  bot.hears('Текущая задача', (ctx) => getCurrentTask(ctx));
-  bot.hears('/currentTask', (ctx) => getCurrentTask(ctx));
-  bot.hears('Отключи меня', (ctx) => removeUser(ctx));
-  bot.hears('/turnOff', (ctx) => removeUser(ctx));
-
-  bot.launch();
+  await bot
+    .start(onStart)
+    .on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'))
+    .hears('Текущая задача', (ctx) => getCurrentTask(ctx))
+    .hears('/currentTask', (ctx) => getCurrentTask(ctx))
+    .hears('Отключи меня', (ctx) => removeUser(ctx))
+    .hears('/turnOff', (ctx) => removeUser(ctx))
+    .launch();
 }
 
-function sendNewTask() {
-  currentTask = taskScheduler.chooseTask();
-  const messageObj = MessagesMap.find(
-    (el) => el.title === currentTask.finalTitle
-  );
+async function sendNewTask() {
+  currentTask = await taskScheduler.chooseTask();
+  console.log('Отправка новой задачи', { currentTask });
 
-  if (!messageObj) {
-    console.error('Не найден текст для задачи. Fak.', {
-      finalTitle: currentTask.finalTitle,
-      title: currentTask.title,
-      messageObj
-    });
-    taskScheduler.completeTask(currentTask.title);
-    return;
-  }
-
-  console.log('Отправляем новую задачу', { messageObj });
-
-  const { descriptions } = messageObj;
-
-  chatIdManager.getChats().forEach((chatId) => {
+  (await Chat.find()).forEach((chat) => {
     bot.telegram.sendMessage(
-      chatId,
-      // descriptions[Math.floor(Math.random() * descriptions.length)]
-      descriptions
+      chat.chatId,
+      currentTask.message,
     );
   });
-
-  taskScheduler.completeTask(currentTask.title);
 }
 
 function checkTimeAndRunFunction() {
@@ -96,32 +74,26 @@ function checkTimeAndRunFunction() {
 }
 
 function getCurrentTask(ctx) {
-  console.log('123');
-  const messageObj = MessagesMap.find(
-    (el) => el.title === currentTask.finalTitle
-  );
-  if (!messageObj) {
-    console.error('Не найден текст для задачи. Fak.', {
-      finalTitle: currentTask.finalTitle,
-      title: currentTask.title,
-      messageObj
-    });
-    ctx.reply('Не могу найти текст для задачи. Fak.');
-    return;
-  }
-  ctx.reply(messageObj.descriptions);
+  ctx.reply(currentTask.message);
 }
 
-function removeUser(ctx) {
-  chatIdManager.removeChat(ctx.chat.id);
+async function removeUser(ctx) {
+  await Chat.updateOne({ chatId: ctx.chat.id }, { isActive: false });
   ctx.reply(
     'Окей, грязная вонючка, я больше не буду тебе писать. Если передумаешь вонять, напиши /start'
   );
 }
 
-function onStart(ctx) {
+async function onStart(ctx) {
   ctx.reply(
     'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире.'
   );
-  chatIdManager.addChat(ctx.chat.id);
+    
+  const chat = Chat.findOne({ chatId: ctx.chat.id })
+  
+  if (!chat) {
+    await Chat.create({ chatId: ctx.chat.id, isActive: true });
+  } else {
+    await Chat.updateOne({ chatId: ctx.chat.id }, { isActive: true });
+  }
 }
