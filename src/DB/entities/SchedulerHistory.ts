@@ -2,7 +2,7 @@ import mongoose, { Schema, Types, Document } from 'mongoose';
 
 const ObjectId = Schema.ObjectId;
 
-interface ISchedulerHistory extends Document {
+export interface ISchedulerHistory extends Document {
   lastTaskIds: Types.ObjectId[];
 }
 

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Types, Document } from 'mongoose';
 const ObjectId = Schema.ObjectId;
 
-interface ITask extends Document {
+export interface ITask extends Document {
   simplifiedMessage: string;
   messageTextVariations: string[];
   taskListId: Types.ObjectId;
@@ -12,7 +12,7 @@ interface ITask extends Document {
   readonly message: string; // Геттер рандомного сообщения из messageTextVariations
 }
 
-const TaskSchema = new Schema<ITask>({
+export const TaskSchema = new Schema<ITask>({
   simplifiedMessage: { type: String, required: true },
   messageTextVariations: { type: [String], required: true },
   taskListId: { type: ObjectId, required: true, ref: 'TaskList' },

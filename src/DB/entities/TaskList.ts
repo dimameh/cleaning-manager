@@ -1,10 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-interface ITaskList extends Document {
+export interface ITaskList extends Document {
   title: string;
 }
 
-const TaskListSchema = new Schema<ITaskList>({
+export const TaskListSchema = new Schema<ITaskList>({
   title: { type: String, required: true }
 });
 
