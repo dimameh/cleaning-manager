@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Types } from 'mongoose';
 
 export type LastTasksIds = [
   Types.ObjectId?,
@@ -6,4 +6,4 @@ export type LastTasksIds = [
   Types.ObjectId?,
   Types.ObjectId?,
   Types.ObjectId?
-]
+];

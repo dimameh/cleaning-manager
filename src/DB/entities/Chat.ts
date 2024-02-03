@@ -12,7 +12,7 @@ const ChatSchema = new Schema<IChat>({
   chatId: { type: Number, required: true, unique: true },
   isActive: { type: Boolean, required: true },
   userInfoId: { type: ObjectId, ref: 'UserInfo' },
-  taskListId: { type: ObjectId, ref: 'TaskList' },
+  taskListId: { type: ObjectId, ref: 'TaskList' }
 });
 
 const Chat = mongoose.model<IChat>('Chat', ChatSchema);

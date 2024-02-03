@@ -53,10 +53,7 @@ async function sendNewTask() {
   console.log('Отправка новой задачи', { currentTask });
 
   (await Chat.find()).forEach((chat) => {
-    bot.telegram.sendMessage(
-      chat.chatId,
-      currentTask.message,
-    );
+    bot.telegram.sendMessage(chat.chatId, currentTask.message);
   });
 }
 
@@ -88,9 +85,9 @@ async function onStart(ctx) {
   ctx.reply(
     'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире.'
   );
-    
-  const chat = Chat.findOne({ chatId: ctx.chat.id })
-  
+
+  const chat = Chat.findOne({ chatId: ctx.chat.id });
+
   if (!chat) {
     await Chat.create({ chatId: ctx.chat.id, isActive: true });
   } else {
