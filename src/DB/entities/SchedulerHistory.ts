@@ -13,7 +13,8 @@ const SchedulerHistorySchema = new Schema<ISchedulerHistory>({
 
 const SchedulerHistoryModel = mongoose.model<ISchedulerHistory>(
   'SchedulerHistory',
-  SchedulerHistorySchema
+  SchedulerHistorySchema,
+  'SchedulerHistory'
 );
 
 class SchedulerHistoryProxy {

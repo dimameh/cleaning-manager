@@ -43,6 +43,6 @@ TaskSchema.virtual('message').get(function (this: ITask) {
   ];
 });
 
-const Task = mongoose.model<ITask>('Task', TaskSchema);
+const Task = mongoose.model<ITask>('Task', TaskSchema, 'Task');
 
 export default Task;
