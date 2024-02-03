@@ -1,10 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import { Types } from 'mongoose';
-import TaskList, { ITaskList } from 'src/DB/entities/TaskList';
-import Task, { ITask } from 'src/DB/entities/Task';
-import SchedulerHistory from 'src/DB/entities/SchedulerHistory';
-import { LastTasksIds } from 'src/utils/types';
+import TaskList, { ITaskList } from './DB/entities/TaskList';
+import Task, { ITask } from './DB/entities/Task';
+import SchedulerHistory from './DB/entities/SchedulerHistory';
+import { LastTasksIds } from './utils/types';
 import { shuffle } from './utils';
 
 export class TaskScheduler {

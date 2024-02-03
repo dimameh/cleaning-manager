@@ -1,6 +1,4 @@
 import { TaskScheduler } from './Scheduler';
-import TodoListInitial from './config/TodoList.json';
-import MessagesMap from './config/MessagesMap.json';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { config } from 'dotenv';
