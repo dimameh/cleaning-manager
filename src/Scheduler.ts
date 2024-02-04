@@ -1,51 +1,76 @@
-import fs from 'fs';
-import { Task } from './Task';
-import { SchedulerSerialized } from './types';
-import path from 'path';
+import TaskList, { ITaskList } from './DB/entities/TaskList';
+import Task, { ITask } from './DB/entities/Task';
+import SchedulerHistory from './DB/entities/SchedulerHistory';
+import { getRandomElement } from './utils';
 
-export class TaskScheduler {
-  private _tasks: Task[];
-  private _lastTasksTitles: [string?, string?, string?, string?, string?];
+export default class TaskScheduler {
+  private static _tasks: ITask[];
+  private static _currentTask: ITask;
+  private static _readyForNextTask = true;
+  private static _intervalId;
+  private static _onNewTaskHandler: (task: ITask) => void;
 
-  constructor();
-  constructor(tasks: string[]);
-
-  constructor(tasks?: string[]) {
-    if (!fs.existsSync( path.join(__dirname, 'state'))) {
-      fs.mkdirSync( path.join(__dirname, 'state'));
-    }
-    if (!tasks) {
-      try {
-        this.loadCurrentState();
-      } catch (error) {
-        const errorMessage = 'Не удалось загрузить Scheduler. Проверьте, что файл SchedulerState.json существует и содержит корректные данные.';
-      
-        console.error(errorMessage);
-        throw new Error(
-          errorMessage
-        );
-      }
-      return;
-    }
-
-    this._tasks = tasks.map((task) => new Task(task));
-
-    // простой способ избавиться от лишней проверки при выборе таски
-    this._lastTasksTitles = new Array(5) as any;
+  static get currentTask() {
+    return this._currentTask;
   }
 
-  chooseTask(): Task {
-    this.updateWeights();
+  static async init(taskListId: ITaskList['id'], onNewTaskHandler: (task: ITask) => void) {
+    if (this._intervalId) {
+      console.log('already initialized');
+      return;
+    }
+    try {
+      await this._loadTasks(taskListId);
 
+      this._onNewTaskHandler = onNewTaskHandler;
+
+      this._intervalId = setInterval(this._checkTimeAndRunHandler, 60000) // проверяем каждую минуту
+
+    } catch (error) {
+      const errorMessage = 'Не удалось загрузить список задач.';
+      console.error(errorMessage, error);
+    }
+  }
+
+  private static async _checkTimeAndRunHandler() {
+    // Получаем текущее время в Астане
+    const astanaTime = new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Almaty'
+    });
+    const currentTime = new Date(astanaTime);
+  
+    // Проверяем, соответствует ли время 14:00
+    if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
+      await this._generateTask();
+      this._onNewTaskHandler(this._currentTask);
+    }
+  }
+
+  private static async _generateTask(): Promise<ITask> {
+    // предотвратить параллельное сохранение сущностей (weights для tasks)
+    if (!this._readyForNextTask) {
+      throw new Error('TaskScheduler is not ready for next task.');
+    }
+    this._readyForNextTask = false;
+    const task = await this._getNextTask();
+    await task.completeTask();
+    await SchedulerHistory.updateLastTasks(task?.id);
+    this._currentTask = task;
+    this._readyForNextTask = true;
+    return task;
+  }
+
+  private static async _getNextTask(): Promise<ITask> {
+    await this._updateWeights();
+    const lastTasksIds = await SchedulerHistory.getLastTasks();
     // Фильтрация задач, чтобы не повторять задачу подряд
     const filteredTasks = this._tasks.filter(
-      (task) => !this._lastTasksTitles.includes(task.title)
+      (task) => !lastTasksIds.includes(task._id)
     );
-
     // Проверка на задачи, которые не выполнялись более двух недель
     const overdueTask = filteredTasks.find((task) => task.weight > 14);
     if (overdueTask) {
-      return overdueTask.getPreparedForMessageTask();
+      return overdueTask;
     }
 
     // Взвешенный случайный выбор
@@ -58,58 +83,57 @@ export class TaskScheduler {
     for (const task of filteredTasks) {
       randomValue -= task.weight;
       if (randomValue <= 0) {
-        this._lastTasksTitles.push(task.title);
-        this._lastTasksTitles.shift();
-        return task.getPreparedForMessageTask();
+        return task;
       }
     }
 
-    // Возвращаем первую задачу из отфильтрованного списка, если другие условия не выполняются
-    const firstTask = filteredTasks[0];
-    this._lastTasksTitles.push(firstTask.title);
-    this._lastTasksTitles.shift();
-    return firstTask.getPreparedForMessageTask();
+    const maxWeight = filteredTasks.reduce(
+      (max, task) => Math.max(max, task.weight),
+      -Infinity
+    );
+
+    // Фильтруем задачи, у которых вес равен максимальному
+    const maxWeightTasks = filteredTasks.filter(
+      (task) => task.weight === maxWeight
+    );
+    return maxWeightTasks[0];
   }
 
-  completeTask(taskTitle: string) {
-    const task = this._tasks.find((task) => task.title === taskTitle);
-    if (task) {
-      task.lastCompleted = new Date();
-      task.weight = 0;
-    }
-    this.saveCurrentState();
-  }
-
-  logCurrentState() {
-    console.log({ tasks: this._tasks, lastTasksTitles: this._lastTasksTitles });
-  }
-
-  private updateWeights() {
-    this._tasks.forEach((task) => task.updateWeight());
-    this.saveCurrentState();
-  }
-
-  private saveCurrentState() {
-    console.log('Сохраняем состояние в файл:', path.join(__dirname, 'state', 'SchedulerState.json'))
-    fs.writeFileSync(
-        path.join(__dirname, 'state', 'SchedulerState.json'),
-      JSON.stringify({
-        tasks: this._tasks.map((task) => task.getSerialized()),
-        lastTasksTitles: this._lastTasksTitles,
+  private static async _updateWeights() {
+    const promises = this._tasks.map((task) =>
+      task.updateWeight((lastCompleted) => {
+        const now = new Date();
+        // Количество дней с момента последнего выполнения задачи будет ее новым весом
+        const daysSinceCompletion = Math.floor(
+          (now.getTime() - lastCompleted.getTime()) / (1000 * 3600 * 24)
+        );
+        return daysSinceCompletion;
       })
     );
+
+    return Promise.all(promises);
   }
 
-  private loadCurrentState() {
-    console.log('Загружаем состояние из файла:', path.join(__dirname, 'state', 'SchedulerState.json'))
-    const state = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, 'state', 'SchedulerState.json'),
-        'utf-8'
-      )
-    ) as SchedulerSerialized;
+  private static async _loadTasks(taskListId: ITaskList['id']) {
+    const taskListResult = await TaskList.findById(taskListId);
 
-    this._tasks = state.tasks.map((task) => new Task(task.title, task));
-    this._lastTasksTitles = state.lastTasksTitles;
+    if (!taskListResult) {
+      throw new Error('Task list not found');
+    }
+
+    this._tasks = await Task.find({ taskListId });
+
+    const currentTaskId = await SchedulerHistory.getCurrentTask();
+    const loadedCurrentTask = this._tasks.find(
+      (el) => el._id === currentTaskId
+    );
+
+    if (!currentTaskId || !loadedCurrentTask) {
+      this._currentTask = getRandomElement(this._tasks);
+      !loadedCurrentTask && console.log('TaskList changed!');
+    } else {
+      this._currentTask = loadedCurrentTask;
+    }
+    await SchedulerHistory.updateCurrentTask(this._currentTask._id);
   }
 }

@@ -1,128 +1,150 @@
-import { TaskScheduler } from './Scheduler';
-import TodoListInitial from './config/TodoList.json';
-import MessagesMap from './config/MessagesMap.json';
-import { shuffle } from './utils';
+import TaskScheduler from './Scheduler';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { Task } from './Task';
-import { ChatIdManager } from './ChatIdsManager';
 import { config } from 'dotenv';
+import { initDB } from './DB';
+import TaskList from './DB/entities/TaskList';
+import { ITask } from './DB/entities/Task';
+import Chat from './DB/entities/Chat';
+import { isValidOnStartContext } from './utils';
 
 config();
 
 let bot: Telegraf;
-let taskScheduler: TaskScheduler;
-let currentTask: Task;
-const chatIdManager = new ChatIdManager();
 
 initEverything();
 
-// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-process.env.USE_CRON === 'FALSE' ? setInterval(checkTimeAndRunFunction, 60000) : sendNewTask();
-
-function initEverything() {
-  initBot();
-  try {
-    taskScheduler = new TaskScheduler();
-  } catch (err) {
-    console.log('Создаем новый Scheduler');
-    taskScheduler = new TaskScheduler(shuffle(TodoListInitial));
-  }
-  sendNewTask();
+async function initEverything() {
+  await initBot();
+  console.log('bot is ready');
+  await initDB();
+  console.log('DB is ready');
+  const taskList = await TaskList.findOne({});
+  await TaskScheduler.init(taskList?.id, sendNewTask);
+  console.log('Task Scheduler is ready');
 }
 
-function initBot() {
+async function initBot() {
   if (!process.env.BOT_TOKEN) {
     console.error('BOT_TOKEN is not defined!');
     process.exit(1);
   }
   bot = new Telegraf(process.env.BOT_TOKEN);
+
   bot.start(onStart);
 
   bot.on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'));
-  bot.hears('Текущая задача', (ctx) => getCurrentTask(ctx));
-  bot.hears('/currentTask', (ctx) => getCurrentTask(ctx));
-  bot.hears('Отключи меня', (ctx) => removeUser(ctx));
-  bot.hears('/turnOff', (ctx) => removeUser(ctx));
+
+  bot.hears('Текущая задача', getCurrentTask);
+  bot.hears('/currentTask', getCurrentTask);
+
+  bot.hears('Отключи меня', removeUser);
+  bot.hears('/turnOff', removeUser);
 
   bot.launch();
 }
 
-function sendNewTask() {
-  currentTask = taskScheduler.chooseTask();
-  const messageObj = MessagesMap.find(
-    (el) => el.title === currentTask.finalTitle
-  );
+async function sendNewTask(newTask: ITask) {
+  console.log('Sending new task', { currentTask: TaskScheduler.currentTask });
 
-  if (!messageObj) {
-    console.error('Не найден текст для задачи. Fak.', {
-      finalTitle: currentTask.finalTitle,
-      title: currentTask.title,
-      messageObj,
-    });
-    taskScheduler.completeTask(currentTask.title);
+  (await Chat.find()).forEach((chat) => {
+    bot.telegram.sendMessage(chat.chatId, TaskScheduler.currentTask.message);
+  });
+}
+
+async function getCurrentTask(ctx) {
+  const chat = await Chat.findOne({ chatId: ctx.chat.id });
+  if (!chat) {
+    ctx.reply('Куда! Нажмешь /start - и получишь задание!');
     return;
   }
 
-  console.log('Отправляем новую задачу', { messageObj });
-
-  const { descriptions } = messageObj;
-
-
-  chatIdManager.getChats().forEach((chatId) => {
-    bot.telegram.sendMessage(
-      chatId,
-      // descriptions[Math.floor(Math.random() * descriptions.length)]
-      descriptions
+  if (chat.isActive === false) {
+    ctx.reply(
+      'Соре, задания тут вонючкам не выдают. Хочешь перестать вонять? Нажми /start а там уже посмотрим.'
     );
-  });
-
-  taskScheduler.completeTask(currentTask.title);
-}
-
-function checkTimeAndRunFunction() {
-  // Получаем текущее время в Астане
-  const astanaTime = new Date().toLocaleString('en-US', {
-    timeZone: 'Asia/Almaty',
-  });
-  const currentTime = new Date(astanaTime);
-
-  // Проверяем, соответствует ли время 14:00
-  if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
-    sendNewTask();
-  }
-}
-
-function getCurrentTask(ctx) {
-  console.log('123')
-  const messageObj = MessagesMap.find(
-    (el) => el.title === currentTask.finalTitle
-  );
-  if (!messageObj) {
-    console.error('Не найден текст для задачи. Fak.', {
-      finalTitle: currentTask.finalTitle,
-      title: currentTask.title,
-      messageObj,
-    });
-    ctx.reply('Не могу найти текст для задачи. Fak.')
     return;
   }
-  ctx.reply(messageObj.descriptions)
+
+  // deprecated но на всякий случай пока оставлю
+  if (!TaskScheduler.currentTask) {
+    ctx.reply(
+      'Пока что нет задачи. Но скоро будет! А пока выметайся от сюда 🧹'
+    );
+    return;
+  }
+  ctx.reply(TaskScheduler.currentTask.message);
 }
 
-function removeUser(ctx) {
-  chatIdManager.removeChat(ctx.chat.id);
-  ctx.reply(
-    'Окей, грязная вонючка, я больше не буду тебе писать. Если передумаешь вонять, напиши /start'
-  );
+async function removeUser(ctx) {
+  try {
+    const chat = await Chat.findOne({ chatId: ctx.chat.id });
+    if (!chat) {
+      console.error('Error removing user, chat not found');
+      ctx.reply(
+        'Что-то пошло не так, попробуй еще раз. Если не получится - плюнь, заблокируй бота и съешь конфетку.'
+      );
+      return;
+    }
+
+    if (!chat.isActive) {
+      ctx.reply(
+        'Да понял я что не надо тебе писать. Я же тебе уже не пишу. Если передумаешь вонять, напиши /start. А если я все таки пишу, ну соре, что-то пошло не так. Заблокируй бота и съешь конфетку.'
+      );
+      return;
+    }
+
+    await Chat.updateOne({ chatId: ctx.chat.id }, { isActive: false });
+    ctx.reply(
+      'Окей, грязная вонючка, я больше не буду тебе писать 💩. Если передумаешь вонять, напиши /start'
+    );
+  } catch (err) {
+    console.error('Error removing user', err);
+    ctx.reply(
+      'Что-то пошло не так, попробуй еще раз. Если не получится - плюнь, заблокируй бота и съешь конфетку.'
+    );
+  }
 }
 
-function onStart(ctx) {
-  ctx.reply(
-    'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире.'
-  );
-  chatIdManager.addChat(ctx.chat.id);
+async function onStart(ctx) {
+  console.log('Start command initiated');
+  const { chat, from } = ctx.update.message;
+
+  if (!isValidOnStartContext(ctx)) {
+    console.error(
+      'Error getting chat id in onStart handler. ctx:',
+      JSON.stringify(ctx)
+    );
+    ctx.reply(
+      'Привет! У тебя какой-то странный чат. Я такого не ожидал! Но посмотрю что с этим можно сделать в ближайшее время.'
+    );
+    return;
+  }
+
+  const chatEntity = await Chat.findOne({ chatId: chat.id });
+  if (!chatEntity) {
+    console.log('User not found, creating new chat');
+
+    try {
+      await Chat.createNewChat(chat.id, from);
+      ctx.reply(
+        'Привет! Я твой клининг менеджер. Я подскажу тебе когда и что убрать в твоей квартире. Команды можешь найти в описании. Приятного пользования! 🧹'
+      );
+    } catch (err) {
+      console.error('Error creating new chat', err);
+      console.error('Error data', { chatId: chat.id, from });
+    }
+  } else if (!chatEntity.isActive) {
+    await Chat.updateOne({ chatId: ctx.chat.id }, { isActive: true });
+    ctx.reply(
+      'Какие люди в голивуде! Уже успел засраться без меня! Ну добро пожаловать, дружище 🥸'
+    );
+  } else {
+    ctx.reply(
+      'Дружок пирожок, хватит жмакать по старту, я тут и так работаю. Если что, напиши /currentTask и я тебе напомню текущую задачу.'
+    );
+  }
 }
