@@ -6,15 +6,19 @@ const ObjectId = Schema.ObjectId;
 
 export interface ISchedulerHistory extends Document {
   lastTaskIds: LastTasksIds;
+  currentTask: Types.ObjectId;
 }
 
 interface ISchedulerHistoryModel extends Model<ISchedulerHistory> {
   updateLastTasks(newTaskId: Types.ObjectId): Promise<void>;
   getLastTasks(): Promise<LastTasksIds>;
+  updateCurrentTask(taskId: Types.ObjectId): Promise<void>;
+  getCurrentTask(): Promise<Types.ObjectId | null>;
 }
 
 const SchedulerHistorySchema = new Schema<ISchedulerHistory>({
-  lastTaskIds: { type: [ObjectId], required: true, ref: 'Task' }
+  lastTaskIds: { type: [ObjectId], required: true, ref: 'Task' },
+  currentTask: { type: ObjectId, required: true, ref: 'Task' }
 });
 
 SchedulerHistorySchema.statics.updateLastTasks = async function (
@@ -43,6 +47,18 @@ SchedulerHistorySchema.statics.updateLastTasks = async function (
 SchedulerHistorySchema.statics.getLastTasks = async function () {
   const record = await this.findOne({});
   return record?.lastTaskIds || [];
+};
+
+SchedulerHistorySchema.statics.updateCurrentTask = async function (
+  taskId: Types.ObjectId
+) {
+  await this.findOneAndUpdate({}, { currentTask: taskId });
+};
+
+
+SchedulerHistorySchema.statics.getCurrentTask = async function () {
+  const record = await this.findOne({});
+  return record?.currentTask || null;
 };
 
 const SchedulerHistory = mongoose.model<

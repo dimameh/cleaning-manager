@@ -1,4 +1,4 @@
-import { TaskScheduler } from './Scheduler';
+import TaskScheduler from './Scheduler';
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import { config } from 'dotenv';
@@ -11,17 +11,11 @@ import { isValidOnStartContext } from './utils';
 config();
 
 let bot: Telegraf;
-let taskScheduler: TaskScheduler;
-let currentTask: ITask;
 
 initEverything();
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
-process.env.USE_CRON === 'FALSE'
-  ? setInterval(checkTimeAndRunFunction, 60000)
-  : sendNewTask();
 
 async function initEverything() {
   await initBot();
@@ -29,8 +23,7 @@ async function initEverything() {
   await initDB();
   console.log('DB is ready');
   const taskList = await TaskList.findOne({});
-  taskScheduler = new TaskScheduler();
-  await taskScheduler.init(taskList?.id);
+  await TaskScheduler.init(taskList?.id, sendNewTask);
   console.log('Task Scheduler is ready');
 }
 
@@ -54,26 +47,12 @@ async function initBot() {
   bot.launch();
 }
 
-async function sendNewTask() {
-  currentTask = await taskScheduler.generateTask();
-  console.log('Sending new task', { currentTask });
+async function sendNewTask(newTask: ITask) {
+  console.log('Sending new task', { currentTask: TaskScheduler.currentTask });
 
   (await Chat.find()).forEach((chat) => {
-    bot.telegram.sendMessage(chat.chatId, currentTask.message);
+    bot.telegram.sendMessage(chat.chatId, TaskScheduler.currentTask.message);
   });
-}
-
-function checkTimeAndRunFunction() {
-  // Получаем текущее время в Астане
-  const astanaTime = new Date().toLocaleString('en-US', {
-    timeZone: 'Asia/Almaty'
-  });
-  const currentTime = new Date(astanaTime);
-
-  // Проверяем, соответствует ли время 14:00
-  if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
-    sendNewTask();
-  }
 }
 
 async function getCurrentTask(ctx) {
@@ -90,13 +69,14 @@ async function getCurrentTask(ctx) {
     return;
   }
 
-  if (!currentTask) {
+  // deprecated но на всякий случай пока оставлю
+  if (!TaskScheduler.currentTask) {
     ctx.reply(
       'Пока что нет задачи. Но скоро будет! А пока выметайся от сюда 🧹'
     );
     return;
   }
-  ctx.reply(currentTask.message);
+  ctx.reply(TaskScheduler.currentTask.message);
 }
 
 async function removeUser(ctx) {

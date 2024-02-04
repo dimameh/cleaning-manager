@@ -18,3 +18,7 @@ export async function wait(ms) {
     setTimeout(resolve, ms);
   });
 }
+
+export function getRandomElement<T>(array: Array<T>) {
+  return array[Math.floor(Math.random() * array.length)];
+}
