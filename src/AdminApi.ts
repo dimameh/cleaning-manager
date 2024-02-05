@@ -6,14 +6,25 @@ import bodyParser from 'body-parser';
 
 config();
 
-if (!process.env.API_PORT) {
-  console.error('API_PORT is not defined!');
+if (!process.env.API_PORT || !process.env.ADMIN_PASS) {
+  console.error('API_PORT or ADMIN_PASS is not defined!');
   process.exit(1);
 }
 
 const app: Express = express();
 
 app.use(bodyParser.json());
+
+app.use(function(req, res, next) {
+  if (!req.headers.authorization) {
+    return res.status(403).json({ error: 'No credentials sent!' });
+  }
+
+  if (req.headers.authorization !== process.env.ADMIN_PASS) {
+    return res.status(403).json({ error: 'Wrong credentials!' });
+  }
+  next();
+});
 
 app.post('/sendMessageToAll', async (req, res) => {
   let chats: IChat[] = [];
