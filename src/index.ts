@@ -1,57 +1,55 @@
 import TaskScheduler from './Scheduler';
-import { Telegraf } from 'telegraf';
+import Bot from './Bot';
 import { message } from 'telegraf/filters';
-import { config } from 'dotenv';
 import { initDB } from './DB';
 import TaskList from './DB/entities/TaskList';
 import { ITask } from './DB/entities/Task';
 import Chat from './DB/entities/Chat';
 import { isValidOnStartContext } from './utils';
+import Server from './AdminApi';
+import { config } from 'dotenv';
 
 config();
 
-let bot: Telegraf;
-
 initEverything();
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => Bot.stop('SIGINT'));
+process.once('SIGTERM', () => Bot.stop('SIGTERM'));
 
 async function initEverything() {
   await initBot();
-  console.log('bot is ready');
+  console.log('Bot ready');
   await initDB();
-  console.log('DB is ready');
+  console.log('MongoDB ready');
   const taskList = await TaskList.findOne({});
   await TaskScheduler.init(taskList?.id, sendNewTask);
-  console.log('Task Scheduler is ready');
+  console.log('Task Scheduler ready');
+  Server.listen(process.env.API_PORT, () => {
+    console.log(
+      `Admin server ready. Listening on port ${process.env.API_PORT}`
+    );
+  });
 }
 
 async function initBot() {
-  if (!process.env.BOT_TOKEN) {
-    console.error('BOT_TOKEN is not defined!');
-    process.exit(1);
-  }
-  bot = new Telegraf(process.env.BOT_TOKEN);
+  Bot.start(onStart);
 
-  bot.start(onStart);
+  Bot.on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'));
 
-  bot.on(message('sticker'), (ctx) => ctx.reply('Вау, ахуеть! 👍'));
+  Bot.hears('Текущая задача', getCurrentTask);
+  Bot.hears('/currentTask', getCurrentTask);
 
-  bot.hears('Текущая задача', getCurrentTask);
-  bot.hears('/currentTask', getCurrentTask);
+  Bot.hears('Отключи меня', removeUser);
+  Bot.hears('/turnOff', removeUser);
 
-  bot.hears('Отключи меня', removeUser);
-  bot.hears('/turnOff', removeUser);
-
-  bot.launch();
+  Bot.launch();
 }
 
 async function sendNewTask(newTask: ITask) {
   console.log('Sending new task', { currentTask: TaskScheduler.currentTask });
 
   (await Chat.find()).forEach((chat) => {
-    bot.telegram.sendMessage(chat.chatId, TaskScheduler.currentTask.message);
+    Bot.telegram.sendMessage(chat.chatId, TaskScheduler.currentTask.message);
   });
 }
 
