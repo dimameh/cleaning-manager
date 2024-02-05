@@ -14,7 +14,10 @@ export default class TaskScheduler {
     return this._currentTask;
   }
 
-  static async init(taskListId: ITaskList['id'], onNewTaskHandler: (task: ITask) => void) {
+  static async init(
+    taskListId: ITaskList['id'],
+    onNewTaskHandler: (task: ITask) => void
+  ) {
     if (this._intervalId) {
       console.log('already initialized');
       return;
@@ -24,8 +27,7 @@ export default class TaskScheduler {
 
       this._onNewTaskHandler = onNewTaskHandler;
 
-      this._intervalId = setInterval(this._checkTimeAndRunHandler, 60000) // проверяем каждую минуту
-
+      this._intervalId = setInterval(this._checkTimeAndRunHandler, 10000); // проверяем каждую минуту
     } catch (error) {
       const errorMessage = 'Не удалось загрузить список задач.';
       console.error(errorMessage, error);
@@ -38,15 +40,14 @@ export default class TaskScheduler {
       timeZone: 'Asia/Almaty'
     });
     const currentTime = new Date(astanaTime);
-  
+
     // Проверяем, соответствует ли время 14:00
     if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
-      await this._generateTask();
-      this._onNewTaskHandler(this._currentTask);
+      await TaskScheduler._generateAndRunTask();
     }
   }
 
-  private static async _generateTask(): Promise<ITask> {
+  private static async _generateAndRunTask(): Promise<void> {
     // предотвратить параллельное сохранение сущностей (weights для tasks)
     if (!this._readyForNextTask) {
       throw new Error('TaskScheduler is not ready for next task.');
@@ -57,7 +58,7 @@ export default class TaskScheduler {
     await SchedulerHistory.updateLastTasks(task?.id);
     this._currentTask = task;
     this._readyForNextTask = true;
-    return task;
+    TaskScheduler._onNewTaskHandler(TaskScheduler._currentTask);
   }
 
   private static async _getNextTask(): Promise<ITask> {
