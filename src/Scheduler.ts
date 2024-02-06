@@ -27,7 +27,7 @@ export default class TaskScheduler {
 
       this._onNewTaskHandler = onNewTaskHandler;
 
-      this._intervalId = setInterval(this._checkTimeAndRunHandler, 10000); // проверяем каждую минуту
+      this._intervalId = setInterval(this._checkTimeAndRunHandler, 60000); // проверяем каждую минуту
     } catch (error) {
       const errorMessage = 'Не удалось загрузить список задач.';
       console.error(errorMessage, error);
