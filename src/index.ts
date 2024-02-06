@@ -24,9 +24,9 @@ async function initEverything() {
   const taskList = await TaskList.findOne({});
   await TaskScheduler.init(taskList?.id, sendNewTask);
   console.log('Task Scheduler ready');
-  Server.listen(process.env.API_PORT, () => {
+  Server.listen(process.env.PORT, () => {
     console.log(
-      `Admin server ready. Listening on port ${process.env.API_PORT}`
+      `Admin server ready. Listening on port ${process.env.PORT}`
     );
   });
 }

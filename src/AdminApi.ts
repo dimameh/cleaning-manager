@@ -6,8 +6,8 @@ import bodyParser from 'body-parser';
 
 config();
 
-if (!process.env.API_PORT || !process.env.ADMIN_PASS) {
-  console.error('API_PORT or ADMIN_PASS is not defined!');
+if (!process.env.PORT || !process.env.ADMIN_PASS) {
+  console.error('PORT or ADMIN_PASS is not defined!');
   process.exit(1);
 }
 
@@ -39,7 +39,7 @@ app.post('/sendMessageToAll', async (req, res) => {
     Bot.telegram.sendMessage(chat.chatId, req.body.message);
   });
 
-  res.send('Done!');
+  res.json('Done!');
 });
 
 app.post('/sendMessageTo/:chatId', async (req, res) => {
@@ -57,11 +57,11 @@ app.post('/sendMessageTo/:chatId', async (req, res) => {
 
   Bot.telegram.sendMessage(req.params.chatId, req.body.message);
 
-  res.send('Done!');
+  res.json('Done!');
 });
 
 app.get('/healthcheck', (req, res) => {
-  res.send('All good!');
+  res.json('All good!');
 });
 
 export default app;
