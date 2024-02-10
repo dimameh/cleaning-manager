@@ -31,9 +31,13 @@ export function timeToUTC(time: TimeString, city: 'Астана' | 'Москва
     'Астана': 6
   }[city];
 
-  const [hours, minutes] = time.split(':').map(Number);
-  const utcHours = (hours - offset + 24) % 24;
-  return `${utcHours}:${minutes}` as TimeString;
+  let [hours, minutes] = time.split(':').map(Number);
+  let utcHours = (hours - offset + 24) % 24;
+  // Дополнение часов и минут нулями, если они состоят из одной цифры
+  let formattedHours = utcHours.toString().padStart(2, '0');
+  let formattedMinutes = minutes.toString().padStart(2, '0');
+
+  return `${formattedHours}:${formattedMinutes}` as TimeString;
 }
 
 export function timeWithCityToUTC(timeWithCity: TimeWithCity): TimeString {
