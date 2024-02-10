@@ -124,9 +124,9 @@ export default class TaskScheduler {
 
     this._tasks = await Task.find({ taskListId });
 
-    const currentTaskId = await SchedulerHistory.getCurrentTask();
+    const currentTaskId = (await SchedulerHistory.getCurrentTask())?.toString();
     const loadedCurrentTask = this._tasks.find(
-      (el) => el._id === currentTaskId
+      (el) => el.id === currentTaskId
     );
 
     if (!currentTaskId || !loadedCurrentTask) {
