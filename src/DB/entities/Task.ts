@@ -23,13 +23,14 @@ const TaskSchema = new Schema<ITask>({
   }
 });
 
-TaskSchema.methods.completeTask = async function () {
+TaskSchema.methods.completeTask = async function (this: ITask) {
   this.lastCompleted = new Date();
   this.weight = 0;
   return this.save();
 };
 
 TaskSchema.methods.updateWeight = function (
+  this: ITask,
   updateFunc: (lastCompleted: Date) => number
 ) {
   const newWeight = updateFunc(this.lastCompleted);
