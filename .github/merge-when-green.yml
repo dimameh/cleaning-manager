@@ -1,4 +1,0 @@
-requiredChecks:
-  - Check Draft Or Blocked / check-labels
-  - CodeQL / Analyze (javascript-typescript)
-  - Build Project / build
