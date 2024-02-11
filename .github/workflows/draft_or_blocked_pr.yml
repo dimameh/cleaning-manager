@@ -1,4 +1,4 @@
-name: Check Draft
+name: Check Draft Or Blocked
 
 on:
   pull_request:
