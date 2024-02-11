@@ -3,6 +3,7 @@ import Bot from './Bot';
 import Chat, { IChat } from './DB/entities/Chat';
 import { config } from 'dotenv';
 import bodyParser from 'body-parser';
+import TaskScheduler from './Scheduler';
 
 config();
 
@@ -24,6 +25,11 @@ app.use(function(req, res, next) {
     return res.status(403).json({ error: 'Wrong credentials!' });
   }
   next();
+});
+
+app.post('/enforceNewTask', async (req, res) => {
+  await TaskScheduler.generateAndRunTask();
+  res.json('Done!');
 });
 
 app.post('/sendMessageToAll', async (req, res) => {

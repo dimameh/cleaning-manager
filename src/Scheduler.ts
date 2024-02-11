@@ -43,11 +43,11 @@ export default class TaskScheduler {
 
     // Проверяем, соответствует ли время 14:00
     if (currentTime.getHours() === 14 && currentTime.getMinutes() === 0) {
-      await TaskScheduler._generateAndRunTask();
+      await TaskScheduler.generateAndRunTask();
     }
   }
 
-  private static async _generateAndRunTask(): Promise<void> {
+  public static async generateAndRunTask(): Promise<void> {
     // предотвратить параллельное сохранение сущностей (weights для tasks)
     if (!this._readyForNextTask) {
       throw new Error('TaskScheduler is not ready for next task.');
