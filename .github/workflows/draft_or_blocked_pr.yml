@@ -2,10 +2,7 @@ name: Check Draft Or Blocked
 
 on:
   pull_request:
-    types:
-      - opened
-      - labeled
-      - unlabeled
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
   check-labels:
