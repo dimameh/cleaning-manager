@@ -14,26 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check for 'draft' label
-        id: draft_check
         run: |
           echo "Checking if PR is a draft..."
-          if echo '${{ toJSON(github.event.pull_request.labels.*.name) }}' | grep -q '"draft"'; then
-            echo "Found 'draft' label"
+          if echo '${{ toJSON(github.event.pull_request.labels.*.name) }}' | grep -q 'draft'; then
             echo "draft=true" >> $GITHUB_ENV
           else
-            echo "No 'draft' label found"
             echo "draft=false" >> $GITHUB_ENV
+          fi
 
       - name: Check for 'blocked' label
-        id: blocked_check
         run: |
           echo "Checking if PR is blocked..."
-          if echo '${{ toJSON(github.event.pull_request.labels.*.name) }}' | grep -q '"blocked"'; then
-            echo "Found 'blocked' label"
+          if echo '${{ toJSON(github.event.pull_request.labels.*.name) }}' | grep -q 'blocked'; then
             echo "blocked=true" >> $GITHUB_ENV
           else
-            echo "No 'blocked' label found"
             echo "blocked=false" >> $GITHUB_ENV
+          fi
 
       - name: Fail if PR is a draft or blocked
         if: env.draft == 'true' || env.blocked == 'true'
@@ -45,3 +41,4 @@ jobs:
             echo "This PR is currently blocked by other feature."
           fi
           exit 1
+
