@@ -10,19 +10,38 @@ on:
       - unlabeled
 
 jobs:
-  fail-for-draft:
-    if: contains(github.event.pull_request.labels.*.name, 'draft')
+  check-labels:
     runs-on: ubuntu-latest
     steps:
-      - name: Fail if PR is a draft
+      - name: Check for 'draft' label
+        id: draft_check
         run: |
-          echo "This PR is currently a draft."
-          exit 1
-  fail-for-blocked:
-    if: contains(github.event.pull_request.labels.*.name, 'blocked')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail if PR is blocked by other feature
+          echo "Checking if PR is a draft..."
+          if echo '${{ toJSON(github.event.pull_request.labels.*.name) }}' | grep -q '"draft"'; then
+            echo "Found 'draft' label"
+            echo "draft=true" >> $GITHUB_ENV
+          else
+            echo "No 'draft' label found"
+            echo "draft=false" >> $GITHUB_ENV
+
+      - name: Check for 'blocked' label
+        id: blocked_check
         run: |
-          echo "This PR is currently blocked by other feature."
+          echo "Checking if PR is blocked..."
+          if echo '${{ toJSON(github.event.pull_request.labels.*.name) }}' | grep -q '"blocked"'; then
+            echo "Found 'blocked' label"
+            echo "blocked=true" >> $GITHUB_ENV
+          else
+            echo "No 'blocked' label found"
+            echo "blocked=false" >> $GITHUB_ENV
+
+      - name: Fail if PR is a draft or blocked
+        if: env.draft == 'true' || env.blocked == 'true'
+        run: |
+          if [ "${{ env.draft }}" == "true" ]; then
+            echo "This PR is currently a draft."
+          fi
+          if [ "${{ env.blocked }}" == "true" ]; then
+            echo "This PR is currently blocked by other feature."
+          fi
           exit 1
