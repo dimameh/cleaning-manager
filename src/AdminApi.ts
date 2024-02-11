@@ -31,6 +31,7 @@ app.post('/enforceNewTask', async (req, res) => {
   await TaskScheduler.generateAndRunTask();
   res.json('Done!');
 });
+//test
 
 app.post('/sendMessageToAll', async (req, res) => {
   let chats: IChat[] = [];
