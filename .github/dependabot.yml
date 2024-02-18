@@ -13,3 +13,7 @@ updates:
       time: "14:00"
       timezone: "Asia/Almaty"
     target-branch: "main"
+    assignees:
+      - "dimameh"
+    reviewers:
+      - "dimameh"
