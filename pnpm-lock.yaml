@@ -18,8 +18,8 @@ dependencies:
     specifier: ^4.18.2
     version: 4.18.2
   mongoose:
-    specifier: ^8.2.0
-    version: 8.2.0
+    specifier: ^8.2.2
+    version: 8.2.2
   telegraf:
     specifier: ^4.15.3
     version: 4.15.3
@@ -1225,8 +1225,8 @@ packages:
       mongodb-connection-string-url: 3.0.0
     dev: false
 
-  /mongoose@8.2.0:
-    resolution: {integrity: sha512-la93n6zCYRbPS+c5N9oTDAktvREy5OT9OCljp1Tah0y3+p8UPMTAoabWaLZMdzYruOtF9/9GRf6MasaZjiZP1A==}
+  /mongoose@8.2.2:
+    resolution: {integrity: sha512-6sMxe1d3k/dBjiOX4ExNTNOP0g1x0iq8eXyg+ttgIXM3HLnQ0IUyXRwVVAPFFY6O4/8uYN5dB0Ec72FrexbPpw==}
     engines: {node: '>=16.20.1'}
     dependencies:
       bson: 6.2.0
